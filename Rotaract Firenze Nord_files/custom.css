@@ -1,0 +1,26 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 11-apr-2019, 14.31.13
+    Author     : Daniele Ambrosino
+*/
+
+.navbar-brand-logo {
+  width: 30px;
+  margin-right: 5px;
+}
+
+@media (min-width: 992px) {
+  .navbar-brand-logo {
+    width: 100px;
+    transition: all 0.3s;
+  }
+
+  .navbar-brand-logo-shrink {
+    width: 50px;
+    transition: all 0.3s;
+  }
+}
