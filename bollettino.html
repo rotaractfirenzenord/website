@@ -324,6 +324,86 @@
 		// Update document title
 		document.title = `Bollettino di ${MONTH_NAMES[month - 1] || ''} ${year} | Rotaract Club Firenze Nord`;
 
+		// Aggiungi dopo le altre costanti
+		const SPREADSHEET_ID = '1WBzWn5gFOY3WK3AEfoGrsjYzSLnKKTMdyfDzy3rNPD0'; // ID del foglio Google Sheets
+		const SHEET_NAME = 'Lettere'; // Nome del foglio
+
+		/**
+		 * Recupera la lettera del presidente dal Google Sheet
+		 * @param {number} year - Anno
+		 * @param {number} month - Mese
+		 * @returns {Promise<{titolo: string, contenuto: string, firma: string} | null>}
+		 */
+		async function fetchLetteraPresidente(year, month) {
+			try {
+				const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+				const response = await fetch(url);
+				const data = await response.json();
+
+				if (!data.values) return null;
+
+				// Trova la riga corrispondente al mese/anno
+				const row = data.values.find(row =>
+					parseInt(row[0]) === year && parseInt(row[1]) === month
+				);
+
+				if (!row) return null;
+
+				return {
+					titolo: 'Lettera del presidente',
+					contenuto: row[2] || '',
+					firma: row[3] || ''
+				};
+			} catch (error) {
+				console.error('Errore nel caricamento della lettera:', error);
+				return null;
+			}
+		}
+
+		/**
+		 * Converte i caratteri di newline in tag <br> (equivalente di nl2br di PHP)
+		 * @param {string} text - Il testo da processare
+		 * @returns {string} Il testo con i newline convertiti in <br>
+		 */
+		function nl2br(text) {
+			if (!text) return '';
+			// Sostituisce \r\n, \n\r, \r e \n con <br>
+			return text.replace(/\r\n|\n\r|\r|\n/g, '<br>');
+		}
+
+		/**
+		 * Aggiorna la sezione lettera con i dati recuperati
+		 * @param {{titolo: string, contenuto: string, firma: string} | null} lettera
+		 */
+		function updateLetteraSection(lettera) {
+			const letteraSection = document.querySelector('#lettera');
+			if (!letteraSection) return;
+
+			const article = letteraSection.querySelector('article');
+
+			if (lettera) {
+				// Processa il contenuto convertendo i newline in <br> tags
+				const contenutoProcessato = nl2br(lettera.contenuto);
+				// @ts-ignore
+				article.innerHTML = contenutoProcessato;
+
+				// Aggiungi la firma se presente
+				if (lettera.firma) {
+					const firma = document.createElement('p');
+					// Processa anche la firma per convertire eventuali newline
+					const firmaProcessata = nl2br(lettera.firma);
+					firma.innerHTML = firmaProcessata;
+					firma.style.textAlign = 'right';
+					firma.style.fontWeight = 'bold';
+					// @ts-ignore
+					article.appendChild(firma);
+				}
+			} else {
+				// Mantieni il contenuto di default se non trovato
+				console.log('Lettera non trovata per il mese corrente, mantengo il contenuto di default');
+			}
+		}
+
 		/**
 		 * @param {string} id 
 		 * @returns {Promise<CalendarResponse>}
@@ -501,6 +581,12 @@
 			}
 		}
 
+		fetchLetteraPresidente(year, month)
+			.then(updateLetteraSection)
+			.catch(error => {
+				console.error('Errore nel caricamento della lettera:', error);
+			});
+
 		// Carica e visualizza gli eventi
 		Promise.all(CALENDARS.map(fetchCalendar))
 			.then(handleCalendarLoadSuccess)
@@ -524,23 +610,32 @@
 		<section id="lettera">
 			<h2>Lettera del presidente</h2>
 			<article>
-				<p>
-					Cari Soci, Autorità Rotaractiane e Rotariane, aspiranti e amici,
-				</p>
-				<p>
-					spero che abbiate trascorso un’estate serena e ricca di belle esperienze, ma Settembre è alle porte ed è arrivato il momento di ripartire con entusiasmo!!!
-					<br>
-					Ecco qui di seguito il bollettino del mese di Settembre.
-					<br>
-					Venerdì 12 settembre inaugureremo il nuovo anno rotaractiano con l’Apertura della Zona “Il Magnifico”, che si svolgerà alle Lance di Fiesole: in questa occasione verrà presentato il service di Zona dal titolo “Passo fidato”.
-					<br>
-					Non finisce qui: sabato 27 Settembre parteciperemo alla II Assemblea Distrettuale organizzata dal RT Volterra.
-				</p>
-				<p>
-					Con la speranza di vedervi numerosi, auguro a tutti un buon Rotaract!
-				</p>
+				<div id="loading-spinner" style="display: flex; justify-content: center; align-items: center; padding: 2rem;">
+					<div style="
+						width: 40px;
+						height: 40px;
+						border: 4px solid #f3f3f3;
+						border-top: 4px solid var(--cranberry);
+						border-radius: 50%;
+						animation: spin 1s linear infinite;
+					"></div>
+				</div>
 
-				<p>Costanza Panzani</p>
+				<style>
+					@keyframes spin {
+						0% {
+							transform: rotate(0turn);
+						}
+
+						100% {
+							transform: rotate(1turn);
+						}
+					}
+				</style>
+
+				<p style="text-align: center; font-style: italic; color: var(--charcoal);">
+					Caricamento della lettera in corso...
+				</p>
 			</article>
 		</section>
 
