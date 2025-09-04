@@ -329,7 +329,7 @@
 		const SHEET_NAME = 'Lettere'; // Nome del foglio
 
 		/**
-		 * Recupera la lettera del presidente dal Google Sheet
+		 * Recupera la lettera del Presidente dal Google Sheet
 		 * @param {number} year - Anno
 		 * @param {number} month - Mese
 		 * @returns {Promise<{titolo: string, contenuto: string, firma: string} | null>}
@@ -350,7 +350,7 @@
 				if (!row) return null;
 
 				return {
-					titolo: 'Lettera del presidente',
+					titolo: 'Lettera del Presidente',
 					contenuto: row[2] || '',
 					firma: row[3] || ''
 				};
@@ -596,7 +596,7 @@
 
 <body>
 	<nav>
-		<a href="#lettera">Lettera del presidente</a>
+		<a href="#lettera">Lettera del Presidente</a>
 		<a href="#eventi">Eventi</a>
 		<a href="#direttivo">Consiglio direttivo</a>
 		<a href="#contatti">Contatti</a>
@@ -608,7 +608,7 @@
 
 	<main>
 		<section id="lettera">
-			<h2>Lettera del presidente</h2>
+			<h2>Lettera del Presidente</h2>
 			<article>
 				<div id="loading-spinner" style="display: flex; justify-content: center; align-items: center; padding: 2rem;">
 					<div style="
