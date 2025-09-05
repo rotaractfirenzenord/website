@@ -294,7 +294,6 @@
 			"c_f9cd0931d1cb00ebe10cef5184687f418879ced5e9c0570f3fa0a7affba2ac97@group.calendar.google.com",
 		]
 
-		// Get query params from URL
 		const urlParams = new URLSearchParams(window.location.search);
 		const year = parseInt(urlParams.get('anno') || new Date().getFullYear().toString());
 		const month = parseInt(urlParams.get('mese') || (new Date().getMonth() + 1).toString());
@@ -314,93 +313,76 @@
 			'dicembre',
 		];
 
-		// Update header with month and year
-		const header = document.querySelector('header');
-		// @ts-ignore
-		header.querySelector('.mese').textContent = MONTH_NAMES[month - 1] || '';
-		// @ts-ignore
-		header.querySelector('.anno').textContent = year.toString();
+		const header = /** @type {HTMLElement} */ (document.querySelector('header'));
+		const monthSpan = /** @type {HTMLSpanElement} */ (header.querySelector('.mese'));
+		const yearSpan = /** @type {HTMLSpanElement} */ (header.querySelector('.anno'));
+		monthSpan.textContent = MONTH_NAMES[month - 1] || '';
+		yearSpan.textContent = year.toString();
 
-		// Update document title
 		document.title = `Bollettino di ${MONTH_NAMES[month - 1] || ''} ${year} | Rotaract Club Firenze Nord`;
 
-		// Aggiungi dopo le altre costanti
-		const SPREADSHEET_ID = '1WBzWn5gFOY3WK3AEfoGrsjYzSLnKKTMdyfDzy3rNPD0'; // ID del foglio Google Sheets
-		const SHEET_NAME = 'Lettere'; // Nome del foglio
+		const SPREADSHEET_ID = '1WBzWn5gFOY3WK3AEfoGrsjYzSLnKKTMdyfDzy3rNPD0';
+		const SHEET_NAME = 'Lettere';
 
 		/**
-		 * Recupera la lettera del Presidente dal Google Sheet
 		 * @param {number} year - Anno
 		 * @param {number} month - Mese
-		 * @returns {Promise<{titolo: string, contenuto: string, firma: string} | null>}
+		 * @returns {Promise<{contenuto: string, firma: string} | null>}
 		 */
-		async function fetchLetteraPresidente(year, month) {
-			try {
-				const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
-				const response = await fetch(url);
-				const data = await response.json();
+		async function fetchLetter(year, month) {
+			const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME}?key=${API_KEY}`;
+			const response = await fetch(url);
+			const data = await response.json();
 
-				if (!data.values) return null;
+			if (!data.values) return null;
 
-				// Trova la riga corrispondente al mese/anno
-				const row = data.values.find(row =>
-					parseInt(row[0]) === year && parseInt(row[1]) === month
-				);
+			const row = data.values.find(row =>
+				parseInt(row[0]) === year && parseInt(row[1]) === month
+			);
 
-				if (!row) return null;
+			if (!row) return null;
 
-				return {
-					titolo: 'Lettera del Presidente',
-					contenuto: row[2] || '',
-					firma: row[3] || ''
-				};
-			} catch (error) {
-				console.error('Errore nel caricamento della lettera:', error);
-				return null;
-			}
+			return {
+				contenuto: row[2] || '',
+				firma: row[3] || '',
+			};
 		}
 
 		/**
-		 * Converte i caratteri di newline in tag <br> (equivalente di nl2br di PHP)
-		 * @param {string} text - Il testo da processare
-		 * @returns {string} Il testo con i newline convertiti in <br>
+		 * @param {string} text
+		 * @returns {string}
 		 */
 		function nl2br(text) {
 			if (!text) return '';
-			// Sostituisce \r\n, \n\r, \r e \n con <br>
 			return text.replace(/\r\n|\n\r|\r|\n/g, '<br>');
 		}
 
 		/**
-		 * Aggiorna la sezione lettera con i dati recuperati
-		 * @param {{titolo: string, contenuto: string, firma: string} | null} lettera
+		 * @param {{contenuto: string, firma: string} | null} letter
 		 */
-		function updateLetteraSection(lettera) {
-			const letteraSection = document.querySelector('#lettera');
-			if (!letteraSection) return;
+		function populateLetter(letter) {
+			const section = document.querySelector('#lettera');
+			if (!section) return;
 
-			const article = letteraSection.querySelector('article');
+			const article = /** @type {HTMLElement} */ (section.querySelector('article'));
 
-			if (lettera) {
-				// Processa il contenuto convertendo i newline in <br> tags
-				const contenutoProcessato = nl2br(lettera.contenuto);
-				// @ts-ignore
-				article.innerHTML = contenutoProcessato;
+			if (letter) {
+				article.innerHTML = nl2br(letter.contenuto);
 
-				// Aggiungi la firma se presente
-				if (lettera.firma) {
+				if (letter.firma) {
 					const firma = document.createElement('p');
-					// Processa anche la firma per convertire eventuali newline
-					const firmaProcessata = nl2br(lettera.firma);
-					firma.innerHTML = firmaProcessata;
+					firma.innerHTML = nl2br(letter.firma);
 					firma.style.textAlign = 'right';
 					firma.style.fontWeight = 'bold';
-					// @ts-ignore
 					article.appendChild(firma);
 				}
 			} else {
-				// Mantieni il contenuto di default se non trovato
-				console.log('Lettera non trovata per il mese corrente, mantengo il contenuto di default');
+				const errorMessage = document.createElement('p');
+				errorMessage.textContent = 'Questa lettera non è stata ancora scritta 🙂';
+				errorMessage.style.textAlign = 'center';
+				errorMessage.style.fontStyle = 'italic';
+				errorMessage.style.color = 'var(--charcoal)';
+				article.replaceChildren(errorMessage);
 			}
 		}
 
@@ -409,12 +391,9 @@
 		 * @returns {Promise<CalendarResponse>}
 		 */
 		async function fetchCalendar(id) {
-			// Calculate the timeMin parameter for the first day of the specified month and year
 			const timeMin = new Date(year, month - 1, 1).toISOString();
-			// Calculate the timeMax parameter for the last day of the specified month and year
 			const timeMax = new Date(year, month, 1).toISOString();
 
-			// Dynamically create the URL with the calendar ID and timeMin/timeMax parameters
 			const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${id}/events`);
 			url.searchParams.append('key', API_KEY);
 			url.searchParams.append('timeMin', timeMin);
@@ -445,12 +424,10 @@
 			events.forEach(event => {
 				const li = document.createElement('li');
 
-				// Titolo evento
 				const h4 = document.createElement('h4');
 				h4.textContent = event.summary || 'Evento senza titolo';
 				li.appendChild(h4);
 
-				// Evento telematico
 				if (event.hangoutLink) {
 					const italicSpan = document.createElement('span');
 					italicSpan.style.fontStyle = 'italic';
@@ -459,7 +436,6 @@
 					li.appendChild(document.createElement('br'));
 				}
 
-				// Data evento
 				const dateSpan = document.createElement('span');
 				const startDateTime = event.start?.dateTime || event.start?.date;
 				const isAllDay = !!event.start?.date && !event.start?.dateTime;
@@ -468,7 +444,6 @@
 					li.appendChild(dateSpan);
 				}
 
-				// Luogo evento
 				if (event.location) {
 					li.appendChild(document.createElement('br'));
 					const locationSpan = document.createElement('span');
@@ -483,7 +458,6 @@
 					li.appendChild(locationSpan);
 				}
 
-				// Descrizione evento
 				if (event.description) {
 					li.appendChild(document.createElement('br'));
 					const descSpan = document.createElement('span');
@@ -491,7 +465,6 @@
 					li.appendChild(descSpan);
 				}
 
-				// Link hangout
 				if (event.hangoutLink) {
 					li.appendChild(document.createElement('br'));
 					const hangoutSpan = document.createElement('span');
@@ -533,17 +506,14 @@
 		}
 
 		/**
-		 * Gestisce il successo del caricamento degli eventi dai calendari
-		 * @param {CalendarResponse[]} results - Array di risposte dai calendari
+		 * @param {CalendarResponse[]} results
 		 */
 		function handleCalendarLoadSuccess(results) {
 			const eventiSection = document.querySelector('#eventi');
 			if (!eventiSection) return;
 
-			// Rimuovi eventuali eventi precedentemente caricati dinamicamente
 			eventiSection.querySelectorAll('div').forEach(div => div.remove());
 
-			// Aggiungi gli eventi per ogni calendario che ha eventi
 			results.forEach((result, index) => {
 				if (result.items && result.items.length > 0) {
 					const eventsHTML = generateEventsHTML(result.items, result.summary);
@@ -553,7 +523,6 @@
 				}
 			});
 
-			// Se nessun calendario ha eventi, mostra un messaggio
 			if (results.every(result => !result.items || result.items.length === 0)) {
 				const noEventsMessage = document.createElement('p');
 				noEventsMessage.textContent = 'Nessun evento programmato per questo mese.';
@@ -565,11 +534,9 @@
 		}
 
 		/**
-		 * Gestisce gli errori durante il caricamento degli eventi dai calendari
-		 * @param {Error} error - L'errore verificatosi
+		 * @param {Error} error
 		 */
 		function handleCalendarLoadError(error) {
-			console.error('Errore nel caricamento degli eventi:', error);
 			const eventiSection = document.querySelector('#eventi');
 			if (eventiSection) {
 				const errorMessage = document.createElement('p');
@@ -581,13 +548,12 @@
 			}
 		}
 
-		fetchLetteraPresidente(year, month)
-			.then(updateLetteraSection)
+		fetchLetter(year, month)
+			.then(populateLetter)
 			.catch(error => {
 				console.error('Errore nel caricamento della lettera:', error);
 			});
 
-		// Carica e visualizza gli eventi
 		Promise.all(CALENDARS.map(fetchCalendar))
 			.then(handleCalendarLoadSuccess)
 			.catch(handleCalendarLoadError);
@@ -623,11 +589,11 @@
 
 				<style>
 					@keyframes spin {
-						0% {
+						from {
 							transform: rotate(0turn);
 						}
 
-						100% {
+						to {
 							transform: rotate(1turn);
 						}
 					}
