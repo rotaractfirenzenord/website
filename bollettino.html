@@ -298,6 +298,8 @@
 		const year = parseInt(urlParams.get('anno') || new Date().getFullYear().toString());
 		const month = parseInt(urlParams.get('mese') || (new Date().getMonth() + 1).toString());
 
+		const rotaryYear = month >= 7 ? year : year - 1;
+
 		const MONTH_NAMES = [
 			'gennaio',
 			'febbraio',
@@ -323,6 +325,7 @@
 
 		const SPREADSHEET_ID = '1WBzWn5gFOY3WK3AEfoGrsjYzSLnKKTMdyfDzy3rNPD0';
 		const SHEET_NAME = 'Lettere';
+		const SHEET_NAME_DIRETTIVO = 'Direttivo';
 
 		/**
 		 * @param {number} year - Anno
@@ -384,6 +387,94 @@
 				errorMessage.style.color = 'var(--charcoal)';
 				article.replaceChildren(errorMessage);
 			}
+		}
+
+		/**
+		 * @param {number} rotaryYear - Anno rotaractiano
+		 * @returns {Promise<Array<{nome: string, ruolo: string, email: string, foto: string}>>}
+		 */
+		async function fetchBoard(rotaryYear) {
+			const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${SHEET_NAME_DIRETTIVO}?key=${API_KEY}`;
+			const response = await fetch(url);
+			const data = await response.json();
+
+			if (!data.values) return [];
+
+			return data.values
+				.filter(row => parseInt(row[0]) === rotaryYear)
+				.map(row => ({
+					nome: row[1] || '',
+					ruolo: row[2] || '',
+					email: row[3] || '',
+					foto: row[4] || '',
+				}));
+		}
+
+		/**
+		 * @param {Array<{nome: string, ruolo: string, email: string, foto: string}>} members
+		 */
+		function populateBoard(members) {
+			const section = document.querySelector('#direttivo');
+			if (!section) return;
+
+			const h2 = /** @type {HTMLHeadingElement} */ (section.querySelector('h2'));
+			h2.textContent = `Il consiglio direttivo ${rotaryYear}/${rotaryYear + 1}`;
+
+			const ul = section.querySelector('ul');
+			if (!ul) return;
+
+			ul.innerHTML = '';
+
+			if (members.length === 0) {
+				const emptyMessage = document.createElement('p');
+				emptyMessage.textContent = 'Nessun membro del consiglio direttivo per questo anno.';
+				emptyMessage.style.textAlign = 'center';
+				emptyMessage.style.fontStyle = 'italic';
+				emptyMessage.style.color = 'var(--charcoal)';
+				ul.replaceWith(emptyMessage);
+				return;
+			}
+
+			members.forEach(member => {
+				const li = document.createElement('li');
+				const img = document.createElement('img');
+				img.src = member.foto;
+				img.alt = `${member.nome}, ${member.ruolo}, A.R. ${rotaryYear}/${rotaryYear + 1}`;
+				img.loading = 'lazy';
+				img.referrerPolicy = 'no-referrer';
+				li.appendChild(img);
+				const h3 = document.createElement('h3');
+				h3.textContent = member.nome;
+				li.appendChild(h3);
+				const h4 = document.createElement('h4');
+				h4.textContent = member.ruolo;
+				li.appendChild(h4);
+				const a = document.createElement('a');
+				a.className = 'email';
+				a.href = `mailto:${member.email}`;
+				a.target = '_blank';
+				a.textContent = member.email;
+				li.appendChild(a);
+				ul.appendChild(li);
+			});
+		}
+
+		/**
+		 * @param {Error} error
+		 */
+		function handleBoardLoadError(error) {
+			const section = document.querySelector('#direttivo');
+			if (!section) return;
+
+			const ul = section.querySelector('ul');
+			if (ul) ul.innerHTML = '';
+
+			const errorMessage = document.createElement('p');
+			errorMessage.textContent = 'Errore nel caricamento del consiglio direttivo.';
+			errorMessage.style.textAlign = 'center';
+			errorMessage.style.fontStyle = 'italic';
+			errorMessage.style.color = 'var(--cardinal)';
+			section.querySelector('h2')?.insertAdjacentElement('afterend', errorMessage);
 		}
 
 		/**
@@ -554,6 +645,10 @@
 				console.error('Errore nel caricamento della lettera:', error);
 			});
 
+		fetchBoard(rotaryYear)
+			.then(populateBoard)
+			.catch(handleBoardLoadError);
+
 		Promise.all(CALENDARS.map(fetchCalendar))
 			.then(handleCalendarLoadSuccess)
 			.catch(handleCalendarLoadError);
@@ -612,53 +707,15 @@
 		<section id="direttivo">
 			<h2>Il consiglio direttivo 2025/2026</h2>
 			<ul>
-				<li>
-					<img src="/assets/img/team/costanza.jpg" alt="Costanza Panzani, Presidente, A.R. 2025/2026">
-					<h3>Costanza Panzani</h3>
-					<h4>Presidente</h4>
-					<a class="email" href="mailto:costanza.panzani@rotaractfirenzenord.org" target="_blank">costanza.panzani@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/irene.jpg" alt="Irene Graziani, Vicepresidente, A.R. 2025/2026">
-					<h3>Irene Graziani</h3>
-					<h4>Vicepresidente</h4>
-					<a class="email" href="mailto:irene.graziani@rotaractfirenzenord.org" target="_blank">irene.graziani@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/annalisa.jpg" alt="Annalisa Velasco Ramirez, Segretario, A.R. 2025/2026">
-					<h3>Annalisa Velasco Ramirez</h3>
-					<h4>Segretario</h4>
-					<a class="email" href="mailto:annalisa.velascoramirez@rotaractfirenzenord.org" target="_blank">annalisa.velascoramirez@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/daniele.jpg" alt="Daniele Ambrosino, Segretario, A.R. 2025/2026">
-					<h3>Daniele Ambrosino</h3>
-					<h4>Segretario</h4>
-					<a class="email" href="mailto:daniele.ambrosino@rotaractfirenzenord.org" target="_blank">daniele.ambrosino@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/carmine.jpg" alt="Carmine Schiavottiello, Tesoriere, A.R. 2025/2026">
-					<h3>Carmine Schiavottiello</h3>
-					<h4>Tesoriere</h4>
-					<a class="email" href="mailto:carmine.schiavottiello@rotaractfirenzenord.org" target="_blank">carmine.schiavottiello@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/giacomo.webp" alt="Giacomo Aiazzi, Prefetto, A.R. 2025/2026">
-					<h3>Giacomo Aiazzi</h3>
-					<h4>Prefetto</h4>
-					<a class="email" href="mailto:giacomo.aiazzi@rotaractfirenzenord.org" target="_blank">giacomo.aiazzi@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/pietro.jpg" alt="Pietro Longinetti, Consigliere, A.R. 2025/2026">
-					<h3>Pietro Longinetti</h3>
-					<h4>Consigliere</h4>
-					<a class="email" href="mailto:pietro.longinetti@rotaractfirenzenord.org" target="_blank">pietro.longinetti@rotaractfirenzenord.org</a>
-				</li>
-				<li>
-					<img src="/assets/img/team/malvina.jpg" alt="Malvina Rosseti, Consigliere, A.R. 2025/2026">
-					<h3>Malvina Rosseti</h3>
-					<h4>Consigliere</h4>
-					<a class="email" href="mailto:malvina.rosseti@rotaractfirenzenord.org" target="_blank">malvina.rosseti@rotaractfirenzenord.org</a>
+				<li class="loading-spinner" style="display: flex; justify-content: center; align-items: center; padding: 2rem;">
+					<div style="
+						width: 40px;
+						height: 40px;
+						border: 4px solid #f3f3f3;
+						border-top: 4px solid var(--cranberry);
+						border-radius: 50%;
+						animation: spin 1s linear infinite;
+					"></div>
 				</li>
 			</ul>
 		</section>
